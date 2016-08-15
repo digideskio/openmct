@@ -37,6 +37,13 @@ define(
             this.conductor = conductor;
             this._timeSystems = timeSystems;
             this._key = key;
+
+            this.changeTimeSystem = this.changeTimeSystem.bind(this);
+
+            //Set the time system initially
+            this.changeTimeSystem(conductor.timeSystem());
+            //Listen for subsequent changes to time system
+            conductor.on('timeSystem', this.changeTimeSystem);
         }
 
         /**
@@ -62,6 +69,7 @@ define(
         };
 
         TimeConductorMode.prototype.destroy = function () {
+            this.conductor.off('timeSystem', this.changeTimeSystem);
         };
 
         return TimeConductorMode;

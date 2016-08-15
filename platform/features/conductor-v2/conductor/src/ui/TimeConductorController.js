@@ -50,17 +50,25 @@ define(
             this.modes = conductorViewService.availableModes();
 
             this.validation = new TimeConductorValidation(this.conductor);
-            this.$scope = $scope;
 
-            this.initializeForm();
+            this.$scope = $scope;
+            this.initializeScope();
 
             this.conductor.on('bounds', this.setFormFromBounds);
             this.conductor.on('follow', function (follow){
                 $scope.followMode = follow;
             });
+            this.conductor.on('timeSystem', this.setTimeSystem);
+
+            //This also has the effect of initializing the time conductor. This
+            // should probably happen from somewhere else though.
+            if (!this.conductorViewService.mode()) {
+                // Default to fixed mode
+                this.setMode('fixed');
+            }
         }
 
-        TimeConductorController.prototype.initializeForm = function() {
+        TimeConductorController.prototype.initializeScope = function() {
             /*
              Set time Conductor bounds in the form
              */
@@ -91,9 +99,6 @@ define(
                     this.setFormFromDeltas(deltas);
                 }
 
-            } else {
-                // Default to fixed mode
-                this.setMode('fixed');
             }
 
             this.setFormFromBounds(this.conductor.bounds());
@@ -215,13 +220,16 @@ define(
                 switch (newModeKey) {
                     case 'fixed':
                         newMode = new FixedMode(newModeKey, this.conductor, this._timeSystems);
-                        if (!timeSystem){
+                        this.conductorViewService.mode(newMode);
+                        if (!timeSystem) {
                             timeSystem = newMode.availableTimeSystems()[0];
+                            this.conductor.timeSystem(timeSystem, timeSystem.defaults().bounds);
                         }
                         break;
                     case 'realtime':
                     case 'latest':
                         newMode = new FollowMode(newModeKey, this.conductor, this._timeSystems);
+                        this.conductorViewService.mode(newMode);
                         //Use current conductor time system if supported by
                         // new mode, otherwise use first available time system
                         if (!contains(newMode.availableTimeSystems(), timeSystem)) {
@@ -231,13 +239,7 @@ define(
                         break;
                 }
                 newMode.initialize();
-                newMode.changeTimeSystem(timeSystem);
-
-                this.conductorViewService.mode(newMode);
-
                 this.setFormFromMode(newMode);
-                this.setFormFromDeltas((timeSystem.defaults() || {}).deltas);
-                this.setTimeSystem(timeSystem);
             }
         };
 
@@ -252,7 +254,7 @@ define(
             var selected = this._timeSystems.find(function (timeSystem){
                 return timeSystem.metadata.key === key;
             });
-            this.setTimeSystem(selected);
+            this.conductor.timeSystem(selected, selected.defaults().bounds);
         };
         
         /**
@@ -261,10 +263,9 @@ define(
          * @param newTimeSystem
          */
         TimeConductorController.prototype.setTimeSystem = function (newTimeSystem) {
-            if (newTimeSystem && newTimeSystem !== this.$scope.timeSystemModel.selected) {
+            if (newTimeSystem && (newTimeSystem !== this.$scope.timeSystemModel.selected)) {
                 var modes = this.conductorViewService.availableModes();
                 var mode = this.conductorViewService.mode();
-                mode.changeTimeSystem(newTimeSystem);
                 this.setFormFromDeltas((newTimeSystem.defaults() || {}).deltas);
 
                 // If current mode supports ticking, set an appropriate tick

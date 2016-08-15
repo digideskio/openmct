@@ -77,6 +77,15 @@ define(
             }
         }
 
+        /*
+         * TimeConductorViewService.prototype.mode = function (key) {
+         *      Change time conductor mode to match key
+         *      var mode = this._availableModes[key];
+         *      mode.doStuff();
+         *
+         * }
+         */
+
         TimeConductorViewService.prototype.mode = function (mode) {
             if (arguments.length === 1) {
                 this._mode = mode;
@@ -86,6 +95,9 @@ define(
 
         TimeConductorViewService.prototype.availableModes = function () {
             return this._availableModes;
+        };
+
+        TimeConductorViewService.prototype.deltas = function () {
         };
 
         return TimeConductorViewService;

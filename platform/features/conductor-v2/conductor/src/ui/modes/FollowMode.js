@@ -34,11 +34,11 @@ define(
          * @constructor
          */
         function FollowMode(key, conductor, timeSystems) {
-            TimeConductorMode.call(this, key, conductor, timeSystems);
-
             this._deltas = undefined;
             this._tickSource = undefined;
             this._tickSourceUnlisten = undefined;
+
+            TimeConductorMode.call(this, key, conductor, timeSystems);
 
             var tickSourceType = {
                 'realtime': 'clock',
@@ -90,36 +90,23 @@ define(
         /**
          * On time system change, default the bounds values in the time
          * conductor, using the deltas associated with this mode.
+         * @private
          * @param timeSystem
          * @returns {TimeSystem}
          */
         FollowMode.prototype.changeTimeSystem = function (timeSystem) {
             TimeConductorMode.prototype.changeTimeSystem.apply(this, arguments);
 
-            if (arguments.length > 0) {
-                var defaults = timeSystem.defaults() || {
-                        bounds: {
-                            start: 0,
-                            end: 0
-                        },
-                        deltas: {
-                            start: 0,
-                            end: 0
-                        }
-                    };
-                var bounds = {
-                    start: defaults.bounds.start,
-                    end: defaults.bounds.end
+            /*
+             * On time system change, apply default deltas
+             */
+            var defaults = timeSystem.defaults() || {
+                    deltas: {
+                        start: 0,
+                        end: 0
+                    }
                 };
-
-                if (defaults.deltas) {
-                    bounds.start = bounds.end - defaults.deltas.start;
-                    bounds.end = bounds.end + defaults.deltas.end;
-                    this._deltas = JSON.parse(JSON.stringify(defaults.deltas));
-                }
-
-                this.conductor.timeSystem(timeSystem, bounds);
-            }
+            this.deltas(defaults.deltas);
         };
 
         /**

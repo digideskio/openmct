@@ -48,7 +48,7 @@ define(
          * @param timeSystem
          * @returns {*}
          */
-        FixedMode.prototype.changeTimeSystem = function (timeSystem){
+/*        FixedMode.prototype.changeTimeSystem = function (timeSystem){
             if (timeSystem) {
                 var defaults = timeSystem.defaults() || {
                         bounds: {
@@ -64,7 +64,7 @@ define(
 
                 this.conductor.timeSystem(timeSystem, bounds);
             }
-        };
+        }; */
 
         return FixedMode;
     }
