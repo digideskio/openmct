@@ -33,17 +33,17 @@ define(
          * the mode relevant, with both offsets defined relative to it.
          * @constructor
          */
-        function FollowMode(key, conductor, timeSystems) {
+        function FollowMode(metadata, conductor, timeSystems) {
             this._deltas = undefined;
             this._tickSource = undefined;
             this._tickSourceUnlisten = undefined;
 
-            TimeConductorMode.call(this, key, conductor, timeSystems);
+            TimeConductorMode.call(this, metadata, conductor, timeSystems);
 
             var tickSourceType = {
                 'realtime': 'clock',
                 'latest': 'data'
-            }[key];
+            }[metadata.key];
 
             this._availableTimeSystems = timeSystems.filter(function (timeSystem){
                 return timeSystem.tickSources().some(function (tickSource){
@@ -87,6 +87,13 @@ define(
             return this._tickSource;
         };
 
+        FollowMode.prototype.availableTickSources = function (timeSystem) {
+            var sourceType = this._metadata.tickSourceType;
+            return timeSystem.tickSources().filter(function (source){
+                return source.type() === sourceType;
+            });
+        };
+
         /**
          * On time system change, default the bounds values in the time
          * conductor, using the deltas associated with this mode.
@@ -107,6 +114,10 @@ define(
                     }
                 };
             this.deltas(defaults.deltas);
+
+            // Set an appropriate tick source from the new time system
+            this.tickSource(this.availableTickSources(timeSystem)[0]);
+
         };
 
         /**

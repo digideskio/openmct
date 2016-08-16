@@ -58,7 +58,7 @@ define(
             this.conductor.on('follow', function (follow){
                 $scope.followMode = follow;
             });
-            this.conductor.on('timeSystem', this.setTimeSystem);
+            this.conductor.on('timeSystem', this.changeTimeSystem);
 
             //This also has the effect of initializing the time conductor. This
             // should probably happen from somewhere else though.
@@ -125,10 +125,11 @@ define(
         };
 
         TimeConductorController.prototype.setFormFromMode = function (mode) {
-            this.$scope.modeModel.selectedKey = mode.key();
+            this.$scope.modeModel.selectedKey = mode;
             //Synchronize scope with time system on mode
-            this.$scope.timeSystemModel.options = mode.availableTimeSystems().map(function (t) {
-                return t.metadata;
+            this.$scope.timeSystemModel.options = this.conductorViewService.availableTimeSystems()
+                .map(function (t) {
+                    return t.metadata;
             });
         };
 
@@ -202,44 +203,8 @@ define(
          */
         TimeConductorController.prototype.setMode = function (newModeKey, oldModeKey) {
             if (newModeKey !== oldModeKey) {
-                var newMode = undefined;
-                var timeSystem = this.conductor.timeSystem();
-                var modes = this.conductorViewService.availableModes();
-                var tickSourceType = modes[newModeKey].tickSourceType;
-
-                if (this.conductorViewService.mode()) {
-                    this.conductorViewService.mode().destroy();
-                }
-
-                function contains(timeSystems, timeSystem) {
-                    return timeSystems.find(function (t) {
-                        return t.metadata.key === timeSystem.metadata.key;
-                    }) !== undefined;
-                }
-
-                switch (newModeKey) {
-                    case 'fixed':
-                        newMode = new FixedMode(newModeKey, this.conductor, this._timeSystems);
-                        this.conductorViewService.mode(newMode);
-                        if (!timeSystem) {
-                            timeSystem = newMode.availableTimeSystems()[0];
-                            this.conductor.timeSystem(timeSystem, timeSystem.defaults().bounds);
-                        }
-                        break;
-                    case 'realtime':
-                    case 'latest':
-                        newMode = new FollowMode(newModeKey, this.conductor, this._timeSystems);
-                        this.conductorViewService.mode(newMode);
-                        //Use current conductor time system if supported by
-                        // new mode, otherwise use first available time system
-                        if (!contains(newMode.availableTimeSystems(), timeSystem)) {
-                            timeSystem = newMode.availableTimeSystems()[0];
-                        }
-                        newMode.tickSource(this.selectTickSource(timeSystem, tickSourceType));
-                        break;
-                }
-                newMode.initialize();
-                this.setFormFromMode(newMode);
+                this.conductorViewService.mode(newModeKey);
+                this.setFormFromMode(newModeKey);
             }
         };
 
@@ -262,19 +227,9 @@ define(
          * bounds and deltas defined in the selected time system.
          * @param newTimeSystem
          */
-        TimeConductorController.prototype.setTimeSystem = function (newTimeSystem) {
+        TimeConductorController.prototype.changeTimeSystem = function (newTimeSystem) {
             if (newTimeSystem && (newTimeSystem !== this.$scope.timeSystemModel.selected)) {
-                var modes = this.conductorViewService.availableModes();
-                var mode = this.conductorViewService.mode();
                 this.setFormFromDeltas((newTimeSystem.defaults() || {}).deltas);
-
-                // If current mode supports ticking, set an appropriate tick
-                // source from the new time system
-                if (mode.tickSource) {
-                    var tickSourceType = modes[mode.key()].tickSourceType;
-                    mode.tickSource(this.selectTickSource(newTimeSystem, tickSourceType));
-                }
-
                 this.setFormFromTimeSystem(newTimeSystem);
             }
         };

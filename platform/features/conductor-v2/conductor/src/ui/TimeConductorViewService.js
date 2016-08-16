@@ -36,6 +36,7 @@ define(
             this._mode = undefined;
             this._availableModes = {
                 'fixed': {
+                    key: 'fixed',
                     implementation: FixedMode,
                     cssclass: 'icon-calendar',
                     label: 'Fixed',
@@ -55,6 +56,7 @@ define(
             //Only show 'real-time mode' if a clock source is available
             if (timeSystemsForSourceType('clock').length > 0 ) {
                 this._availableModes['realtime'] = {
+                    key: 'realtime',
                     implementation: FollowMode,
                     cssclass: 'icon-clock',
                     label: 'Real-time',
@@ -67,6 +69,7 @@ define(
             //Only show 'real-time mode' if a clock source is available
             if (timeSystemsForSourceType('data').length > 0) {
                 this._availableModes['latest'] = {
+                    key: 'latest',
                     implementation: FollowMode,
                     cssclass: 'icon-database',
                     label: 'LAD',
@@ -86,8 +89,45 @@ define(
          * }
          */
 
-        TimeConductorViewService.prototype.mode = function (mode) {
+        TimeConductorViewService.prototype.mode = function (newModeKey) {
             if (arguments.length === 1) {
+                var mode = undefined;
+                var timeSystem = this._conductor.timeSystem();
+                var modes = this.availableModes();
+                var modeMetaData = modes[newModeKey];
+
+                if (this._mode) {
+                    this._mode.destroy();
+                }
+
+                function contains(timeSystems, timeSystem) {
+                    return timeSystems.find(function (t) {
+                            return t.metadata.key === timeSystem.metadata.key;
+                        }) !== undefined;
+                }
+
+                switch (newModeKey) {
+                    case 'fixed':
+                        mode = new FixedMode(modeMetaData, this._conductor, this._timeSystems);
+                        this.conductorViewService.mode(mode);
+                        if (!timeSystem) {
+                            timeSystem = mode.availableTimeSystems()[0];
+                            this.conductor.timeSystem(timeSystem, timeSystem.defaults().bounds);
+                        }
+                        break;
+                    case 'realtime':
+                    case 'latest':
+                        mode = new FollowMode(modeMetaData, this._conductor, this._timeSystems);
+                        this.mode(mode);
+                        //Use current conductor time system if supported by
+                        // new mode, otherwise use first available time system
+                        if (!contains(mode.availableTimeSystems(), timeSystem)) {
+                            timeSystem = mode.availableTimeSystems()[0];
+                        }
+                        break;
+                }
+                mode.initialize();
+
                 this._mode = mode;
             }
             return this._mode;
@@ -96,6 +136,10 @@ define(
         TimeConductorViewService.prototype.availableModes = function () {
             return this._availableModes;
         };
+
+        TimeConductorViewService.prototype.availableTimeSystems = function () {
+            return this._mode.availableTimeSystems();
+        }
 
         TimeConductorViewService.prototype.deltas = function () {
         };
