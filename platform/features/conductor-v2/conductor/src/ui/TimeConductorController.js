@@ -22,11 +22,9 @@
 
 define(
     [
-        './modes/FixedMode',
-        './modes/FollowMode',
         './TimeConductorValidation'
     ],
-    function (FixedMode, FollowMode, TimeConductorValidation) {
+    function (TimeConductorValidation) {
 
         function TimeConductorController($scope, timeConductor, conductorViewService, timeSystems) {
 
@@ -94,7 +92,7 @@ define(
                 //If view already defines a mode (eg. controller is being
                 // initialized after navigation), then pre-populate form
                 this.setFormFromMode(mode);
-                var deltas = mode.deltas && mode.deltas();
+                var deltas = this.conductorViewService.deltas();
                 if (deltas) {
                     this.setFormFromDeltas(deltas);
                 }
@@ -179,12 +177,11 @@ define(
          * @see TimeConductorMode
          */
         TimeConductorController.prototype.updateDeltasFromForm = function (boundsModel) {
-            var mode = this.conductorViewService.mode(),
-                deltas = mode.deltas();
+            var deltas = this.conductorViewService.deltas();
 
             if (deltas !== undefined && this.validation.validateDeltas(boundsModel.startDelta, boundsModel.endDelta)) {
                 //Sychronize deltas between form and mode
-                mode.deltas({start: parseFloat(boundsModel.startDelta), end: parseFloat(boundsModel.endDelta)});
+                this.conductorViewService.deltas({start: parseFloat(boundsModel.startDelta), end: parseFloat(boundsModel.endDelta)});
             }
         };
 

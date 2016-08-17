@@ -22,14 +22,14 @@
 
 define(
     [
-        './modes/FixedMode',
-        './modes/FollowMode'
+        './TimeConductorMode'
     ],
-    function (FixedMode, FollowMode) {
+    function (TimeConductorMode) {
 
         function TimeConductorViewService(conductor, timeSystems) {
-            timeSystems = timeSystems.map(function (timeSystemConstructor){
-                return timeSystemConstructor();
+            this._timeSystems = timeSystems = timeSystems.map(
+                function (timeSystemConstructor) {
+                    return timeSystemConstructor();
             });
 
             this._conductor = conductor;
@@ -37,7 +37,6 @@ define(
             this._availableModes = {
                 'fixed': {
                     key: 'fixed',
-                    implementation: FixedMode,
                     cssclass: 'icon-calendar',
                     label: 'Fixed',
                     name: 'Fixed Timespan Mode',
@@ -45,53 +44,39 @@ define(
                 }
             };
 
-            function timeSystemsForSourceType(sourceType) {
+            function timeSystemsForMode(sourceType) {
                 return timeSystems.filter(function (timeSystem){
                     return timeSystem.tickSources().some(function (tickSource){
-                        return tickSource.type() === sourceType;
+                        return tickSource.metadata.mode === sourceType;
                     });
                 });
             }
 
-            //Only show 'real-time mode' if a clock source is available
-            if (timeSystemsForSourceType('clock').length > 0 ) {
+            //Only show 'real-time mode' if appropriate time systems available
+            if (timeSystemsForMode('realtime').length > 0 ) {
                 this._availableModes['realtime'] = {
                     key: 'realtime',
-                    implementation: FollowMode,
                     cssclass: 'icon-clock',
                     label: 'Real-time',
                     name: 'Real-time Mode',
-                    tickSourceType: 'clock',
                     description: 'Monitor real-time streaming data as it comes in. The Time Conductor and displays will automatically advance themselves based on a UTC clock.'
                 };
             }
 
-            //Only show 'real-time mode' if a clock source is available
-            if (timeSystemsForSourceType('data').length > 0) {
+            //Only show 'LAD mode' if appropriate time systems available
+            if (timeSystemsForMode('LAD').length > 0) {
                 this._availableModes['latest'] = {
-                    key: 'latest',
-                    implementation: FollowMode,
+                    key: 'LAD',
                     cssclass: 'icon-database',
                     label: 'LAD',
                     name: 'LAD Mode',
-                    tickSourceType: 'data',
                     description: 'Latest Available Data mode monitors real-time streaming data as it comes in. The Time Conductor and displays will only advance when data becomes available.'
                 };
             }
         }
 
-        /*
-         * TimeConductorViewService.prototype.mode = function (key) {
-         *      Change time conductor mode to match key
-         *      var mode = this._availableModes[key];
-         *      mode.doStuff();
-         *
-         * }
-         */
-
         TimeConductorViewService.prototype.mode = function (newModeKey) {
             if (arguments.length === 1) {
-                var mode = undefined;
                 var timeSystem = this._conductor.timeSystem();
                 var modes = this.availableModes();
                 var modeMetaData = modes[newModeKey];
@@ -105,32 +90,13 @@ define(
                             return t.metadata.key === timeSystem.metadata.key;
                         }) !== undefined;
                 }
-
-                switch (newModeKey) {
-                    case 'fixed':
-                        mode = new FixedMode(modeMetaData, this._conductor, this._timeSystems);
-                        this.conductorViewService.mode(mode);
-                        if (!timeSystem) {
-                            timeSystem = mode.availableTimeSystems()[0];
-                            this.conductor.timeSystem(timeSystem, timeSystem.defaults().bounds);
-                        }
-                        break;
-                    case 'realtime':
-                    case 'latest':
-                        mode = new FollowMode(modeMetaData, this._conductor, this._timeSystems);
-                        this.mode(mode);
-                        //Use current conductor time system if supported by
-                        // new mode, otherwise use first available time system
-                        if (!contains(mode.availableTimeSystems(), timeSystem)) {
-                            timeSystem = mode.availableTimeSystems()[0];
-                        }
-                        break;
+                this._mode = new TimeConductorMode(modeMetaData, this._conductor, this._timeSystems);
+                if (!timeSystem || !contains(this._mode.availableTimeSystems(), timeSystem)) {
+                    timeSystem = this._mode.availableTimeSystems()[0];
+                    this._conductor.timeSystem(timeSystem, timeSystem.defaults().bounds);
                 }
-                mode.initialize();
-
-                this._mode = mode;
             }
-            return this._mode;
+            return this._mode ? this._mode.metadata().key : undefined;
         };
 
         TimeConductorViewService.prototype.availableModes = function () {
@@ -142,6 +108,7 @@ define(
         }
 
         TimeConductorViewService.prototype.deltas = function () {
+            return this._mode.deltas.apply(this._mode, arguments)
         };
 
         return TimeConductorViewService;
